@@ -1,0 +1,14 @@
+{
+  "name": "thinking-claude",
+  "owner": {
+    "name": "Daniil"
+  },
+  "plugins": [
+    {
+      "name": "reasoning-harness",
+      "displayName": "Reasoning Harness (Думающий Клод)",
+      "source": "./reasoning-harness",
+      "description": "Когнитивная оболочка: 18 скиллов-режимов мышления (архитектор, ред-тим, факт-режим, роли, смежные сферы, анализ конкурентов, пре-мортем, верификация, приоритизация и др.) + команда /test-module для проверки модулей."
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+# Установка плагина reasoning-harness в Cowork
+
+Требуется платный план (Pro / Max / Team / Enterprise) — он есть, раз Cowork работает.
+Важно: «Add marketplace» в Cowork принимает **git-репозиторий**, не локальную папку. Поэтому ниже два рабочих способа.
+
+## Способ 1 — через GitHub (надёжный)
+
+1. Залей папку `thinking-claude` в репозиторий на GitHub (в ней уже есть `.claude-plugin/marketplace.json`). Если git ещё не настроен, в папке `thinking-claude` выполни:
+   ```
+   git init
+   git add .
+   git commit -m "reasoning-harness plugin"
+   git branch -M main
+   git remote add origin https://github.com/<твой-аккаунт>/<репо>.git
+   git push -u origin main
+   ```
+2. В Cowork: открой вкладку **Cowork** → слева **Customize** → вкладка **Plugins**.
+3. В разделе **Personal plugins** нажми **«+»** → **Add marketplace** → **Add from a repository** → вставь URL репозитория → подтверди.
+4. В появившемся маркетплейсе `thinking-claude` найди плагин **reasoning-harness** → **Install**.
+5. Проверка: в любой задаче набери «/» — должны появиться скиллы (architect, red-team, fact-mode…) и команда `test-module`.
+
+## Способ 2 — загрузить файл плагина (если есть такая кнопка)
+
+Customize → Plugins → «upload a custom plugin file» (загрузить свой файл плагина).
+Если опция есть — загрузи плагин оттуда. Если попросит файл — заархивируй папку `reasoning-harness` в zip и укажи его.
+
+## Ядро ставится отдельно (не входит в плагин)
+
+Плагин = только скиллы. «Ядро» методологии (`CLAUDE.md`) подключается отдельно:
+содержимое `CLAUDE.md` → правая панель проекта → **Instructions**.
+Без ядра скиллы будут, но всегда-активных принципов (честность, value-gate, гейты) — нет.
+
+## Управление
+
+- Скиллы видны по «/» или кнопке «+» в чате и в Cowork.
+- Убрать маркетплейс: Customize → Plugins → у нужного маркетплейса меню (⋯) → Remove.
+- Подстроить плагин под себя: открыть его → «Customize» в правом верхнем углу.
