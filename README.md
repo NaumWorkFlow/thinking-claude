@@ -28,7 +28,7 @@ thinking-claude/
     └── CONFIRMING-TESTS.md
 ```
 
-Рядом (уровнем выше): `../Архитектура_думающего_Клода_blueprint.md` — полная архитектура и обоснования.
+Историческая версия архитектуры (до релиза-вычитания 2026-06-28, 18 скиллов) — `_build/Архитектура_blueprint_OLD.md`. Актуальный источник — `ARCHITECTURE.md` в корне.
 
 ## Где и насколько работает
 
@@ -41,7 +41,7 @@ thinking-claude/
 ## Развёртывание
 
 **Cowork (полноценно):**
-1. Содержимое `CLAUDE.md` → правая панель проекта → Instructions.
+1. Содержимое `CLAUDE.md` → правая панель проекта → Instructions. **Только в одно место** (project Instructions ИЛИ глобальные user preferences, не оба сразу) — иначе ядро грузится в контекст по нескольку раз за сессию (см. `INSTALL-COWORK.md`).
 2. Плагин: Customize (левая панель) → вкладка Plugins → Personal → «+» → **Add marketplace** → указать папку `thinking-claude` (или её git-репозиторий) → установить **reasoning-harness**. После этого 16 скиллов и `/test-module` доступны по «/».
 
 **Claude Code:**

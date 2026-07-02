@@ -1,12 +1,15 @@
 # Reasoning Harness — плагин «Думающий Клод»
 
-Когнитивная оболочка: 18 скиллов-режимов, которые подключаются по необходимости и дисциплинируют мышление над сложными задачами (бизнес, стратегия, инвестиции, разработка, контент).
+Когнитивная оболочка: 16 скиллов-режимов, которые подключаются по необходимости и дисциплинируют мышление над сложными задачами (бизнес, стратегия, инвестиции, разработка, контент).
 
-## Скиллы (18)
-architect · prompt-builder · roles · red-team · adjacent-fields · landscape · benchmark · alternatives · divergent · memory · verification · pre-mortem · steelman · prioritization · fact-mode · amplifier · discovery · overseer
+## Скиллы (16)
+architect · prompt-builder · roles · red-team · adjacent-fields · landscape · alternatives · divergent · memory · verification · pre-mortem · steelman · fact-mode · amplifier · discovery · overseer
 
-## Команда
-`/test-module <имя>` — A/B-проверка модуля (нужен ли он, не вредит ли).
+(`benchmark` и `prioritization` — в кладбище `../_build/graveyard/`, не входят в плагин.)
+
+## Команды
+- `/test-module <имя>` — A/B-проверка модуля (нужен ли он, не вредит ли).
+- `/harness-probe` — регресс-пробы после смены модели (канонические ловушки).
 
 ## Установка
 Этот каталог — плагин внутри маркетплейса `thinking-claude` (`../.claude-plugin/marketplace.json`).
