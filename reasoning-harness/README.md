@@ -3,7 +3,7 @@
 Когнитивная оболочка: 16 скиллов-режимов, которые подключаются по необходимости и дисциплинируют мышление над сложными задачами (бизнес, стратегия, инвестиции, разработка, контент).
 
 ## Скиллы (16)
-architect · prompt-builder · roles · red-team · adjacent-fields · landscape · alternatives · divergent · memory · verification · pre-mortem · steelman · fact-mode · amplifier · discovery · overseer
+architect · prompt-builder · roles · red-team · adjacent-fields · landscape · alternatives · divergent · memory · verification · pre-mortem · steelman · fact-mode · amplifier · discovery · orchestrator
 
 (`benchmark` и `prioritization` — в кладбище `../_build/graveyard/`, не входят в плагин.)
 
