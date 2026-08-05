@@ -9,26 +9,31 @@
 
 ```
 thinking-claude/
-├── CLAUDE.md                   # ЯДРО: принципы + роутер + фазы + гейты (ставится как инструкции)
+├── CLAUDE.md                   # ЯДРО: принципы + роутер + фазы + гейты (ЕДИНСТВЕННЫЙ носитель текста ядра)
 ├── portable-system-prompt.md   # 1-страничная версия для любого чата
 ├── README.md                   # этот манифест
+├── ARCHITECTURE.md             # полная архитектура и обоснования
+├── CHANGELOG.md                # история версий
+├── INSTALL-COWORK.md           # установка плагина в Cowork
+├── .gitattributes              # окончания строк -> LF (иначе весь репо «modified»)
 ├── .claude-plugin/
 │   └── marketplace.json        # маркетплейс для установки плагина
 ├── reasoning-harness/          # ПЛАГИН (то, что устанавливается)
 │   ├── .claude-plugin/plugin.json
 │   ├── skills/                 # 16 модулей-режимов
-│   ├── commands/test-module.md # /test-module — A/B-проверка модулей
+│   ├── commands/               # /max · /test-module · /harness-probe · /harness-maintenance
 │   └── README.md
 ├── memory/
 │   ├── PROJECT-MEMORY.md        # долговечный контекст и решения
-│   └── HYPOTHESIS-LEDGER.md     # реестр гипотез + все вердикты тестов
+│   ├── HYPOTHESIS-LEDGER.md     # реестр гипотез + все вердикты тестов
+│   └── ROUTER-LOG.md            # лог решений роутера (матрица под/над-роутинга)
 └── _build/                      # DEV-инструменты (не для повседневной работы)
     ├── ROLLOUT.md
     ├── EVALUATOR-PROMPT.md       # промпт независимого оценщика
     └── CONFIRMING-TESTS.md
 ```
 
-Историческая версия архитектуры (до релиза-вычитания 2026-06-28, 18 скиллов) — `_build/Архитектура_blueprint_OLD.md`. Актуальный источник — `ARCHITECTURE.md` в корне.
+Историческая версия архитектуры (до релиза-вычитания 2026-06-28, 18 скиллов) — в git-истории (выведена из рабочего дерева 04.08.2026). Актуальный источник — `ARCHITECTURE.md` в корне.
 
 ## Где и насколько работает
 
@@ -42,7 +47,7 @@ thinking-claude/
 
 **Cowork (полноценно):**
 1. Содержимое `CLAUDE.md` → правая панель проекта → Instructions. **Только в одно место** (project Instructions ИЛИ глобальные user preferences, не оба сразу) — иначе ядро грузится в контекст по нескольку раз за сессию (см. `INSTALL-COWORK.md`).
-2. Плагин: Customize (левая панель) → вкладка Plugins → Personal → «+» → **Add marketplace** → указать папку `thinking-claude` (или её git-репозиторий) → установить **reasoning-harness**. После этого 16 скиллов и `/test-module` доступны по «/».
+2. Плагин: Customize (левая панель) → вкладка Plugins → Personal → «+» → **Add marketplace** → указать папку `thinking-claude` (или её git-репозиторий) → установить **reasoning-harness**. После этого 16 скиллов и 4 команды (`/max`, `/test-module`, `/harness-probe`, `/harness-maintenance`) доступны по «/».
 
 **Claude Code:**
 1. `CLAUDE.md` → в корень репозитория.

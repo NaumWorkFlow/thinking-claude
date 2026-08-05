@@ -1,0 +1,6 @@
+# Нормализация окончаний строк: в репозитории всегда LF.
+# Без этого весь рабочий каталог вечно числится «modified» из-за CRLF (Windows).
+* text=auto eol=lf
+*.png binary
+*.gz binary
+*.zip binary

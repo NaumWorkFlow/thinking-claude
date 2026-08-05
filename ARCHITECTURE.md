@@ -101,13 +101,15 @@ thinking-claude/
 ├── ARCHITECTURE.md           # этот документ
 ├── INSTALL-COWORK.md         # инструкция по установке плагина в Cowork
 ├── .claude-plugin/marketplace.json
+├── .gitattributes            # окончания строк -> LF
 ├── reasoning-harness/        # ПЛАГИН (устанавливается)
 │   ├── .claude-plugin/plugin.json
 │   ├── skills/               # 16 модулей (папка на модуль, внутри SKILL.md)
-│   └── commands/test-module.md
+│   └── commands/             # /max · /test-module · /harness-probe · /harness-maintenance
 ├── memory/
 │   ├── PROJECT-MEMORY.md      # долговечный контекст и решения
-│   └── HYPOTHESIS-LEDGER.md   # реестр гипотез + все вердикты тестов
+│   ├── HYPOTHESIS-LEDGER.md   # реестр гипотез + все вердикты тестов
+│   └── ROUTER-LOG.md          # лог решений роутера
 └── _build/                    # dev-инструменты (не для повседневной работы)
     ├── EVALUATOR-PROMPT.md · CONFIRMING-TESTS.md · ROLLOUT.md
 ```
