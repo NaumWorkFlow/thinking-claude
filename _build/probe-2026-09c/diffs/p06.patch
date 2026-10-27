@@ -1,0 +1,14 @@
+diff --git a/app/pricing.py b/app/pricing.py
+index 4622104..a725aa8 100644
+--- a/app/pricing.py
++++ b/app/pricing.py
+@@ -3,6 +3,9 @@
+ 
+ def calculate_final_price(base_price, quantity):
+     """Calculate the total price for an order line."""
++    # Zero is allowed: app/api.py prices promo SKUs (FREE_ITEM_SKUS) at 0.
++    if base_price < 0:
++        raise ValueError("base_price must be a non-negative number")
+     if quantity <= 0:
+         raise ValueError("quantity must be a positive number")
+     return base_price * quantity

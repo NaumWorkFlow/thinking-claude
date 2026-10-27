@@ -1,0 +1,361 @@
+diff --git a/README.md b/README.md
+index 216d493..e100327 100644
+--- a/README.md
++++ b/README.md
+@@ -5,7 +5,7 @@
+ - `data/trades.csv` — выгрузка сделок из брокера
+ - `app/trades.py` — загрузка сделок (`load_trades`)
+ - `app/fx.py` — пересчёт в доллары (`to_usd`)
+-- `app/report.py` — отчёты (пока пусто)
++- `app/report.py` — отчёты: `realized_pnl` (реализованная прибыль за месяц, FIFO, в USD); запуск `python -m app.report 2026 9`
+ - `tests/` — тесты
+ 
+ Тесты: `python -m unittest discover` из корня проекта.
+diff --git a/app/fx.py b/app/fx.py
+index 7d452d8..3e17ace 100644
+--- a/app/fx.py
++++ b/app/fx.py
+@@ -4,7 +4,7 @@
+ RATES = {
+     "USD": 1.0,
+     "EUR": 1.08,
+-    "MDL": 17.8,
++    "MDL": 1 / 17.8,  # 17.8 MDL за 1 USD => 1 MDL ≈ 0.056 USD
+ }
+ 
+ 
+diff --git a/app/report.py b/app/report.py
+index 5fe7f83..ac17084 100644
+--- a/app/report.py
++++ b/app/report.py
+@@ -1 +1,127 @@
+ """Portfolio reports."""
++
++import argparse
++import sys
++from collections import defaultdict, deque
++from pathlib import Path
++
++from app.fx import to_usd
++from app.trades import load_trades
++
++DEFAULT_TRADES = Path(__file__).resolve().parent.parent / "data" / "trades.csv"
++
++
++def realized_pnl(trades, year, month):
++    """Realized profit per ticker, in USD, for SELL trades dated in the month.
++
++    Lots are matched FIFO in chronological order over the whole trade
++    history, so purchases from earlier months form the cost basis and sales
++    from earlier months consume it.  Fees are included: a purchase fee is
++    spread over the units of the lot, a sale fee is deducted from proceeds.
++    Every amount is converted to USD with :func:`app.fx.to_usd`.
++
++    If a SELL in the month cannot be fully matched against purchases on
++    record (for example the position was opened before the export starts),
++    its cost basis is unknown and the ticker maps to ``None`` instead of a
++    number -- it is never reported as a profit on a zero basis.
++
++    Returns ``{ticker: pnl_usd}`` for tickers sold in the month; ``pnl_usd``
++    is ``None`` when it cannot be computed.
++    """
++    lots = defaultdict(deque)  # ticker -> deque of [qty_left, unit_cost_usd]
++    pnl = {}
++
++    for t in sorted(trades, key=lambda t: (t.date, t.trade_id)):
++        if t.qty <= 0:
++            raise ValueError(f"trade {t.trade_id}: qty must be positive, got {t.qty}")
++
++        if t.side == "BUY":
++            unit_cost = to_usd(t.price + t.fee / t.qty, t.currency)
++            lots[t.ticker].append([t.qty, unit_cost])
++            continue
++
++        if t.side != "SELL":
++            raise ValueError(f"trade {t.trade_id}: unknown side {t.side!r}")
++
++        # Consume lots FIFO regardless of the month: earlier sales shape
++        # what is left for the month being reported.
++        queue = lots[t.ticker]
++        remaining = t.qty
++        cost = 0.0
++        while remaining and queue:
++            lot = queue[0]
++            take = min(remaining, lot[0])
++            cost += take * lot[1]
++            lot[0] -= take
++            remaining -= take
++            if lot[0] == 0:
++                queue.popleft()
++
++        if not (t.date.year == year and t.date.month == month):
++            continue
++
++        if remaining or pnl.get(t.ticker, 0.0) is None:
++            pnl[t.ticker] = None
++        else:
++            proceeds = to_usd(t.qty * t.price - t.fee, t.currency)
++            pnl[t.ticker] = pnl.get(t.ticker, 0.0) + proceeds - cost
++
++    return pnl
++
++
++def format_report(pnl, year, month):
++    """Render the result of :func:`realized_pnl` as a plain-text table."""
++    title = f"Реализованная прибыль за {year}-{month:02d}, USD"
++    if not pnl:
++        return f"{title}\n\nПродаж за этот месяц нет."
++
++    width = max(len("Итого*"), *(len(ticker) for ticker in pnl))
++    lines = [title, ""]
++    for ticker in sorted(pnl):
++        value = pnl[ticker]
++        cell = "n/a" if value is None else f"{value:,.2f}"
++        lines.append(f"{ticker:<{width}}  {cell:>12}")
++
++    known = [v for v in pnl.values() if v is not None]
++    unknown = sorted(t for t, v in pnl.items() if v is None)
++    lines.append("-" * (width + 14))
++    label = "Итого" if not unknown else "Итого*"
++    lines.append(f"{label:<{width}}  {sum(known):>12,.2f}")
++    if unknown:
++        lines.append("")
++        lines.append(
++            "* без " + ", ".join(unknown) + ": продажа есть, а покупки в выгрузке нет — "
++            "база стоимости неизвестна, прибыль не посчитать."
++        )
++    return "\n".join(lines)
++
++
++def _month(value):
++    month = int(value)
++    if not 1 <= month <= 12:
++        raise argparse.ArgumentTypeError(f"month must be 1..12, got {value}")
++    return month
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(
++        prog="python -m app.report",
++        description="Реализованная прибыль по тикерам за месяц, в USD.",
++    )
++    parser.add_argument("year", type=int)
++    parser.add_argument("month", type=_month)
++    parser.add_argument(
++        "--trades",
++        type=Path,
++        default=DEFAULT_TRADES,
++        help=f"CSV со сделками (по умолчанию {DEFAULT_TRADES})",
++    )
++    args = parser.parse_args(argv)
++
++    trades = load_trades(args.trades)
++    print(format_report(realized_pnl(trades, args.year, args.month), args.year, args.month))
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/tests/test_fx.py b/tests/test_fx.py
+index 528a4d2..b2970ef 100644
+--- a/tests/test_fx.py
++++ b/tests/test_fx.py
+@@ -10,6 +10,11 @@ class TestFx(unittest.TestCase):
+     def test_eur(self):
+         self.assertAlmostEqual(to_usd(100, "EUR"), 108.0)
+ 
++    def test_mdl_is_fraction_of_dollar(self):
++        # 17.8 MDL за доллар, а не 17.8 доллара за лей.
++        self.assertAlmostEqual(to_usd(17.8, "MDL"), 1.0)
++        self.assertLess(to_usd(1, "MDL"), 1.0)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/tests/test_report.py b/tests/test_report.py
+new file mode 100644
+index 0000000..21c2da2
+--- /dev/null
++++ b/tests/test_report.py
+@@ -0,0 +1,181 @@
++import io
++import unittest
++from contextlib import redirect_stderr, redirect_stdout
++from datetime import date
++from pathlib import Path
++
++from app.report import format_report, main, realized_pnl
++from app.trades import Trade, load_trades
++
++DATA = Path(__file__).resolve().parent.parent / "data" / "trades.csv"
++
++
++def trade(trade_id, day, ticker, side, qty, price, currency="USD", fee=0.0):
++    return Trade(
++        trade_id=trade_id,
++        date=date.fromisoformat(day),
++        ticker=ticker,
++        side=side,
++        qty=qty,
++        price=price,
++        currency=currency,
++        fee=fee,
++    )
++
++
++class TestRealizedPnl(unittest.TestCase):
++    def test_full_sale_of_one_lot_includes_both_fees(self):
++        trades = [
++            trade(1, "2026-08-01", "X", "BUY", 10, 100.0, fee=1.0),
++            trade(2, "2026-09-01", "X", "SELL", 10, 110.0, fee=1.0),
++        ]
++        # proceeds 1100 - 1 = 1099; cost 1000 + 1 = 1001
++        self.assertEqual(realized_pnl(trades, 2026, 9), {"X": 98.0})
++
++    def test_partial_sale_spreads_purchase_fee_over_units(self):
++        trades = [
++            trade(1, "2026-08-01", "X", "BUY", 10, 100.0, fee=2.0),
++            trade(2, "2026-09-01", "X", "SELL", 4, 120.0, fee=1.0),
++        ]
++        # cost per unit 100.2; proceeds 480 - 1 = 479; cost 400.8
++        self.assertAlmostEqual(realized_pnl(trades, 2026, 9)["X"], 78.2)
++
++    def test_fifo_across_two_lots(self):
++        trades = [
++            trade(1, "2026-08-01", "X", "BUY", 5, 100.0),
++            trade(2, "2026-08-02", "X", "BUY", 5, 200.0),
++            trade(3, "2026-09-01", "X", "SELL", 7, 300.0),
++        ]
++        # 5 @ 100 + 2 @ 200 = 900 cost; proceeds 2100
++        self.assertAlmostEqual(realized_pnl(trades, 2026, 9)["X"], 1200.0)
++
++    def test_matching_is_chronological_not_file_order(self):
++        trades = [
++            trade(3, "2026-09-01", "X", "SELL", 5, 300.0),
++            trade(2, "2026-08-02", "X", "BUY", 5, 200.0),
++            trade(1, "2026-08-01", "X", "BUY", 5, 100.0),
++        ]
++        # FIFO by date: the 100-lot goes first, not the 200-lot.
++        self.assertAlmostEqual(realized_pnl(trades, 2026, 9)["X"], 1000.0)
++
++    def test_only_sales_in_the_month_are_reported(self):
++        trades = [
++            trade(1, "2026-07-01", "X", "BUY", 10, 100.0),
++            trade(2, "2026-08-01", "X", "SELL", 5, 150.0),
++            trade(3, "2026-09-01", "X", "SELL", 5, 200.0),
++            trade(4, "2026-10-01", "X", "SELL", 1, 250.0),
++        ]
++        self.assertEqual(realized_pnl(trades, 2026, 8), {"X": 250.0})
++        self.assertEqual(realized_pnl(trades, 2026, 9), {"X": 500.0})
++        # Sale in October exceeds what is left -> unknown, but only for October.
++        self.assertEqual(realized_pnl(trades, 2026, 10), {"X": None})
++
++    def test_earlier_sale_consumes_lots_for_later_month(self):
++        trades = [
++            trade(1, "2026-07-01", "X", "BUY", 5, 100.0),
++            trade(2, "2026-07-02", "X", "BUY", 5, 200.0),
++            trade(3, "2026-08-01", "X", "SELL", 5, 150.0),
++            trade(4, "2026-09-01", "X", "SELL", 5, 250.0),
++        ]
++        # August took the 100-lot; September sells the 200-lot.
++        self.assertAlmostEqual(realized_pnl(trades, 2026, 9)["X"], 250.0)
++
++    def test_purchase_later_in_month_does_not_cover_earlier_sale(self):
++        trades = [
++            trade(1, "2026-09-05", "X", "SELL", 3, 100.0),
++            trade(2, "2026-09-20", "X", "BUY", 3, 50.0),
++        ]
++        self.assertEqual(realized_pnl(trades, 2026, 9), {"X": None})
++
++    def test_sale_without_any_purchase_is_unknown_not_profit(self):
++        trades = [trade(1, "2026-09-12", "TSLA", "SELL", 3, 250.0, fee=1.0)]
++        self.assertEqual(realized_pnl(trades, 2026, 9), {"TSLA": None})
++
++    def test_sale_exceeding_holdings_is_unknown(self):
++        trades = [
++            trade(1, "2026-08-01", "X", "BUY", 2, 100.0),
++            trade(2, "2026-09-01", "X", "SELL", 3, 100.0),
++        ]
++        self.assertEqual(realized_pnl(trades, 2026, 9), {"X": None})
++
++    def test_unknown_ticker_stays_unknown_after_a_matched_sale(self):
++        trades = [
++            trade(1, "2026-09-01", "X", "SELL", 1, 100.0),
++            trade(2, "2026-09-02", "X", "BUY", 1, 50.0),
++            trade(3, "2026-09-03", "X", "SELL", 1, 100.0),
++        ]
++        self.assertEqual(realized_pnl(trades, 2026, 9), {"X": None})
++
++    def test_converts_to_usd(self):
++        trades = [
++            trade(1, "2026-08-01", "SAP", "BUY", 20, 150.0, "EUR", fee=2.0),
++            trade(2, "2026-09-01", "SAP", "SELL", 20, 160.0, "EUR", fee=2.0),
++        ]
++        # 196 EUR * 1.08
++        self.assertAlmostEqual(realized_pnl(trades, 2026, 9)["SAP"], 211.68)
++
++    def test_several_tickers_are_independent(self):
++        trades = [
++            trade(1, "2026-08-01", "A", "BUY", 1, 10.0),
++            trade(2, "2026-08-01", "B", "BUY", 1, 10.0),
++            trade(3, "2026-09-01", "A", "SELL", 1, 15.0),
++            trade(4, "2026-09-01", "B", "SELL", 1, 5.0),
++        ]
++        self.assertEqual(realized_pnl(trades, 2026, 9), {"A": 5.0, "B": -5.0})
++
++    def test_no_sales_in_month_gives_empty_dict(self):
++        trades = [trade(1, "2026-08-01", "X", "BUY", 1, 10.0)]
++        self.assertEqual(realized_pnl(trades, 2026, 9), {})
++
++    def test_unknown_side_raises(self):
++        trades = [trade(1, "2026-09-01", "X", "SHORT", 1, 10.0)]
++        with self.assertRaises(ValueError):
++            realized_pnl(trades, 2026, 9)
++
++    def test_sample_file_september_2026(self):
++        pnl = realized_pnl(load_trades(DATA), 2026, 9)
++        self.assertEqual(set(pnl), {"AAPL", "SAP", "MAIB", "TSLA"})
++        # AAPL: sell 5 (48.5) + sell 6 across two lots (113.3)
++        self.assertAlmostEqual(pnl["AAPL"], 161.8)
++        self.assertAlmostEqual(pnl["SAP"], 211.68)
++        # 742.5 MDL / 17.8
++        self.assertAlmostEqual(pnl["MAIB"], 742.5 / 17.8)
++        self.assertIsNone(pnl["TSLA"])
++
++
++class TestReportCli(unittest.TestCase):
++    def run_cli(self, *argv):
++        out = io.StringIO()
++        with redirect_stdout(out):
++            code = main(list(argv))
++        return code, out.getvalue()
++
++    def test_prints_table_and_total(self):
++        code, out = self.run_cli("2026", "9")
++        self.assertEqual(code, 0)
++        self.assertIn("2026-09", out)
++        self.assertIn("AAPL", out)
++        self.assertIn("161.80", out)
++        self.assertIn("Итого", out)
++        self.assertIn("TSLA", out)
++        self.assertIn("n/a", out)
++
++    def test_month_without_sales(self):
++        code, out = self.run_cli("2026", "7")
++        self.assertEqual(code, 0)
++        self.assertIn("нет", out)
++
++    def test_rejects_bad_month(self):
++        with self.assertRaises(SystemExit):
++            with redirect_stderr(io.StringIO()):
++                main(["2026", "13"])
++
++    def test_format_report_total_excludes_unknown(self):
++        text = format_report({"A": 10.0, "B": None, "C": -2.5}, 2026, 9)
++        self.assertIn("7.50", text)
++        self.assertIn("Итого*", text)
++        self.assertIn("без B", text)
++
++
++if __name__ == "__main__":
++    unittest.main()

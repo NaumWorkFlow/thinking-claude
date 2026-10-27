@@ -1,0 +1,32 @@
+diff --git a/app/pricing.py b/app/pricing.py
+index 4622104..e0c8c4d 100644
+--- a/app/pricing.py
++++ b/app/pricing.py
+@@ -3,6 +3,8 @@
+ 
+ def calculate_final_price(base_price, quantity):
+     """Calculate the total price for an order line."""
++    if base_price < 0:
++        raise ValueError("base_price must be a non-negative number")
+     if quantity <= 0:
+         raise ValueError("quantity must be a positive number")
+     return base_price * quantity
+diff --git a/tests/test_pricing.py b/tests/test_pricing.py
+index b49477b..4ea36f1 100644
+--- a/tests/test_pricing.py
++++ b/tests/test_pricing.py
+@@ -15,6 +15,14 @@ class TestPricing(unittest.TestCase):
+         with self.assertRaises(ValueError):
+             calculate_final_price(10, -1)
+ 
++    def test_zero_price_is_allowed(self):
++        # Free promo items in app/api.py rely on base_price == 0 being valid.
++        self.assertEqual(calculate_final_price(0, 3), 0)
++
++    def test_negative_price_raises(self):
++        with self.assertRaises(ValueError):
++            calculate_final_price(-10, 3)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
